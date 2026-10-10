@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="color-scheme" content="dark">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<title>VOID · Cinema</title>
+<title>VOID · Cinema v0.3</title>
 <style>
 :root{--ink:#000;--paper:#f5f2eb;--dim:#9e9e9e;--stroke:rgba(255,255,255,.16);--blur:blur(22px)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -25,6 +25,9 @@ button,input{font:inherit}button{cursor:pointer}button:focus-visible,input:focus
 #demo .ridge2{position:absolute;left:-5%;right:-5%;bottom:-1%;height:38%;background:#1c2438;clip-path:polygon(0 74%,14% 32%,30% 79%,47% 40%,61% 64%,78% 18%,93% 64%,100% 45%,100% 100%,0 100%)}
 #demo .film-grain{position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.13'/%3E%3C/svg%3E");opacity:.17;pointer-events:none}
 #tapLayer{position:absolute;inset:0;z-index:3;touch-action:manipulation}
+#stage.youtube-native #tapLayer,#stage.youtube-native #hud{display:none!important}
+#railLeft,#railRight{position:fixed;top:0;bottom:0;z-index:2;border:0;padding:0;background:transparent;cursor:pointer;touch-action:manipulation}
+#railLeft{left:0}#railRight{right:0}
 #hud{position:absolute;inset:0;z-index:4;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .25s,visibility .25s}
 #stage.show-hud #hud{opacity:1;visibility:visible}
 #hud button,#hud input{pointer-events:auto}
@@ -106,16 +109,19 @@ h1{font-size:25px;font-weight:600;letter-spacing:-.055em;margin:0;line-height:1.
    <div class="hud-bottom"><span class="time" id="elapsed">0:00</span><input id="seek" type="range" min="0" max="1000" value="0" aria-label="Playback progress"><span class="time" id="duration">0:00</span></div>
   </div>
  </main>
+ <button id="railLeft" aria-label="Open VOID menu from left black margin" title="VOID menu"></button>
+ <button id="railRight" aria-label="Open VOID menu from right black margin" title="VOID menu"></button>
 </div>
 <div id="launch">
  <section class="panel" role="dialog" aria-modal="true" aria-labelledby="panelTitle">
-  <div class="panel-head"><div><span class="kicker">VOID / CINEMA · 02</span><h1 id="panelTitle">The screen, minus the noise.</h1><p>Full-height landscape video. Black pillars. Rounded corners. Nothing else.</p></div><button class="close" id="closePanel" title="Close" aria-label="Close">×</button></div>
+  <div class="panel-head"><div><span class="kicker">VOID / CINEMA · 03</span><h1 id="panelTitle">The screen, minus the noise.</h1><p>Full-height landscape video. Black pillars. Rounded corners. Nothing else.</p></div><button class="close" id="closePanel" title="Close" aria-label="Close">×</button></div>
   <form class="url-form" id="urlForm"><input id="urlInput" aria-label="YouTube video link" type="text" placeholder="Paste a YouTube link" spellcheck="false" autocomplete="off" inputmode="url"><button class="primary" type="submit">Watch ↗</button></form>
   <div class="alt-row"><button class="alt" id="fileBtn">Open a video file</button><button class="alt" id="previewBtn">Preview the frame</button></div>
+  <div class="alt-row"><button class="alt" id="launcherFullscreen">Toggle fullscreen</button><button class="alt" id="browseYouTube">Browse YouTube ↗</button></div>
   <div class="section-label">Frame geometry</div>
   <div class="range-line"><label for="ratio">Video width</label><input id="ratio" type="range" min="1.80" max="2.06" step="0.01" value="1.98"><output id="ratioValue">1.98:1</output></div>
   <div class="range-line"><label for="corners">Corner radius</label><input id="corners" type="range" min="0" max="48" step="1" value="15"><output id="cornerValue">15 px</output></div>
-  <div class="notice">The player is centred and fills the entire screen height. Side margins remain symmetrical and keep the camera cutout outside the picture. The CC button appears when you tap the picture. YouTube captions start off; availability and toggling depend on the YouTube embedded player. Local videos work directly.</div>
+  <div class="notice">YouTube now has its own native controls: tap the picture for CC, settings and seeking. Tap either black side margin to reopen this menu. Its native player may show slightly wider black side pillars rather than cropping the video. Browse YouTube opens in a separate tab; its homepage cannot be embedded directly.</div>
  </section>
 </div>
 <input type="file" id="filePick" accept="video/*">
@@ -139,60 +145,33 @@ function geometry(){
  stage.style.width=actualWidth+'px';stage.style.height=h+'px';stage.style.borderRadius=state.radius+'px';
  const actualRatio=actualWidth/h;
  $('ratioValue').textContent=actualRatio.toFixed(2)+':1';
+ // Keep the full YouTube iframe visible. Cropping its height clips native CC/Settings controls.
  const ytIframe=ytMount.querySelector('iframe');
- if(ytIframe){const mediaWidth=Math.max(actualWidth,h*16/9);ytIframe.style.width=mediaWidth+'px';ytIframe.style.height=(mediaWidth*9/16)+'px';}
+ if(ytIframe){ytIframe.style.width=actualWidth+'px';ytIframe.style.height=h+'px';}
+ // Invisible buttons on black side pillars reopen the player menu.
+ const railWidth=Math.max(0,(w-actualWidth)/2);
+ $('railLeft').style.width=railWidth+'px';$('railRight').style.width=railWidth+'px';
  return actualRatio;
 }
 function keepHud(){if(launch.classList.contains('hidden')&&state.showingHud){clearTimeout(state.hudTimeout);state.hudTimeout=setTimeout(()=>setHud(false),3400)}}
 function setHud(show){state.showingHud=show;stage.classList.toggle('show-hud',show);clearTimeout(state.hudTimeout);if(show)keepHud()}
 function panel(open=true){launch.classList.toggle('hidden',!open);setHud(false);if(open){$('urlInput').focus({preventScroll:true});}}
-function mode(next){state.mode=next;demo.style.display=next==='demo'?'block':'none';video.style.display=next==='local'?'block':'none';ytMount.style.display=next==='youtube'?'block':'none';state.playing=false;state.elapsed=0;state.duration=0;syncControls();}
+function mode(next){state.mode=next;stage.classList.toggle('youtube-native',next==='youtube');demo.style.display=next==='demo'?'block':'none';video.style.display=next==='local'?'block':'none';ytMount.style.display=next==='youtube'?'block':'none';state.playing=false;state.elapsed=0;state.duration=0;syncControls();}
 function resetOld(){try{state.player?.destroy?.()}catch(_e){}state.player=null;ytMount.replaceChildren();video.pause();video.removeAttribute('src');video.load();if(state.objectURL){URL.revokeObjectURL(state.objectURL);state.objectURL=null;}}
 function openLocal(file){if(!file)return;resetOld();state.objectURL=URL.createObjectURL(file);state.sourceTitle=file.name||'Local video';titleTag.textContent=state.sourceTitle;video.src=state.objectURL;mode('local');panel(false);geometry();video.play().then(()=>{state.playing=true;syncControls()}).catch(()=>{setHud(true);notify('Tap play to begin.');});}
 function parseYT(input){const s=String(input||'').trim();if(/^[a-zA-Z0-9_-]{11}$/.test(s))return s;try{const u=new URL(s);const host=u.hostname.toLowerCase().replace(/^www\./,'').replace(/^m\./,'');if(host==='youtu.be')return (u.pathname.split('/')[1]||'').match(/^[a-zA-Z0-9_-]{11}$/)?.[0]||null;if(['youtube.com','youtube-nocookie.com','music.youtube.com'].includes(host)){if(u.pathname==='/watch')return (u.searchParams.get('v')||'').match(/^[a-zA-Z0-9_-]{11}$/)?.[0]||null;const parts=u.pathname.split('/').filter(Boolean);if(['shorts','live','embed','v'].includes(parts[0]))return (parts[1]||'').match(/^[a-zA-Z0-9_-]{11}$/)?.[0]||null;}}catch(_e){}return null;}
 function loadYTAPI(){if(window.YT?.Player)return Promise.resolve();if(state.ytScript)return state.ytScript;
  state.ytScript=new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(new Error('YouTube API timed out')),13000);window.onYouTubeIframeAPIReady=()=>{clearTimeout(timeout);resolve()};const s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';s.onerror=()=>{clearTimeout(timeout);reject(new Error('Could not load YouTube API'))};document.head.appendChild(s)});return state.ytScript;}
-// Captions are OFF by default. YouTube caption-module methods are not part of
-// the documented public API, so these are best-effort and may change.
-function applyCaptions(player=state.player){
- if(state.mode!=='youtube'||!player)return;
- try{
-  if(state.captionsEnabled){
-   if(typeof player.loadModule==='function')player.loadModule('captions');
-  }else{
-   // Avoid responding to module-unload events with another redundant unload.
-   const modules=typeof player.getOptions==='function'?player.getOptions():null;
-   if(Array.isArray(modules)&&!modules.includes('captions')&&!modules.includes('cc'))return;
-   // An empty track clears captions in players that support the option.
-   if(typeof player.setOption==='function'){
-    try{player.setOption('captions','track',{});}catch(_e){}
-   }
-   if(typeof player.unloadModule==='function'){
-    player.unloadModule('captions');
-    player.unloadModule('cc');
-   }
-  }
- }catch(_e){}
-}
-function applyCaptionsSoon(player){
- [180,950].forEach(delay=>setTimeout(()=>{
-  if(state.mode==='youtube'&&state.player===player&&!state.captionsEnabled)applyCaptions(player);
- },delay));
-}
+// Only local media needs our custom caption toggle. YouTube displays its own CC button.
 function toggleCaptions(){
- if(state.mode==='local'){
-  const tracks=Array.from(video.textTracks||[]);
-  if(!tracks.length){notify('No separate subtitle track in this local video.');keepHud();return;}
-  state.captionsEnabled=!state.captionsEnabled;
-  tracks.forEach((track,i)=>{track.mode=state.captionsEnabled&&i===0?'showing':'disabled'});
- }else if(state.mode==='youtube'){
-  state.captionsEnabled=!state.captionsEnabled;
-  applyCaptions();
-  if(!state.captionsEnabled)applyCaptionsSoon(state.player);
-  notify(state.captionsEnabled?'Subtitles requested — availability depends on YouTube.':'Subtitles off (best effort).',2500);
- }else{
-  notify('Start a video to control subtitles.');keepHud();return;
+ if(state.mode==='youtube'){
+  notify('Tap the YouTube player, then use its CC button.');return;
  }
+ if(state.mode!=='local'){notify('Start a local video to control subtitles.');return;}
+ const tracks=Array.from(video.textTracks||[]);
+ if(!tracks.length){notify('No separate subtitle track in this local video.');keepHud();return;}
+ state.captionsEnabled=!state.captionsEnabled;
+ tracks.forEach((track,i)=>{track.mode=state.captionsEnabled&&i===0?'showing':'disabled'});
  syncControls();keepHud();
 }
 async function openYT(id){resetOld();state.sourceTitle='YouTube · '+id;titleTag.textContent=state.sourceTitle;mode('youtube');panel(false);notify('Loading YouTube…',2200);
@@ -200,11 +179,10 @@ async function openYT(id){resetOld();state.sourceTitle='YouTube · '+id;titleTag
  const container=document.createElement('div');container.id='ytTarget';ytMount.appendChild(container);
  try{await loadYTAPI();if(state.mode!=='youtube')return;
   state.player=new YT.Player('ytTarget',{
-    videoId:id,playerVars:{controls:0,playsinline:1,fs:0,iv_load_policy:3,cc_load_policy:0,rel:0,enablejsapi:1,autoplay:0},
-    events:{onReady:(e)=>{geometry();applyCaptions(e.target);applyCaptionsSoon(e.target);setHud(true);syncControls();notify('Press play to start watching.',2300)},
-      onStateChange:(e)=>{state.playing=e.data===YT.PlayerState.PLAYING;if(!state.captionsEnabled){applyCaptions(e.target);if(state.playing)applyCaptionsSoon(e.target)}syncControls();if(state.playing)keepHud()},
-      onApiChange:(e)=>{if(!state.captionsEnabled)applyCaptions(e.target)},
-      onError:(e)=>{setHud(true);notify('YouTube could not play this embed (error '+e.data+'). Try an HTTPS page or a different video.',7500)}
+    videoId:id,playerVars:{controls:1,playsinline:1,fs:0,iv_load_policy:3,rel:0,enablejsapi:1,autoplay:0,...(location.protocol==='https:'?{origin:location.origin}:{})},
+    events:{onReady:(e)=>{geometry();setHud(false);syncControls();notify('Tap the video for YouTube controls. Tap a black side margin for the VOID menu.',3300)},
+      onStateChange:(e)=>{state.playing=e.data===YT.PlayerState.PLAYING;syncControls()},
+      onError:(e)=>{notify('YouTube could not play this embed (error '+e.data+'). Tap a side margin to pick another video.',7000)}
     }
   });
  }catch(e){notify(e.message+'. Check connectivity, or play a local file.',6500);setHud(true)}
@@ -228,6 +206,9 @@ function seekTo(v){const t=(Number(v)/1000)*(state.duration||0);if(state.mode===
 function toggleMute(){state.muted=!state.muted;if(state.mode==='local')video.muted=state.muted;else if(state.mode==='youtube'&&state.player){try{if(state.muted)state.player.mute();else state.player.unMute()}catch(_e){}}syncControls();keepHud();}
 async function immersive(){try{if(!document.fullscreenElement){if(!document.documentElement.requestFullscreen)throw new Error('Via may not support the fullscreen API.');await document.documentElement.requestFullscreen({navigationUI:'hide'});try{await screen.orientation?.lock?.('landscape')}catch(_e){}notify('Fullscreen enabled.')}else{await document.exitFullscreen();}}catch(_e){notify('Browser fullscreen is unavailable here. Enable fullscreen or hide toolbars in Via settings.',5200)}keepHud();}
 $('urlForm').addEventListener('submit',e=>{e.preventDefault();const id=parseYT($('urlInput').value);if(!id){notify('Paste a valid YouTube video link (or its 11-character ID).');return}openYT(id)});
+$('railLeft').onclick=()=>panel(true);$('railRight').onclick=()=>panel(true);
+$('launcherFullscreen').onclick=immersive;
+$('browseYouTube').onclick=()=>{const tab=window.open('https://www.youtube.com/','_blank','noopener,noreferrer');if(!tab)notify('Open youtube.com in a separate browser tab to find a video.',3800);};
 $('fileBtn').onclick=()=> $('filePick').click();$('filePick').onchange=e=>openLocal(e.target.files?.[0]);
 $('previewBtn').onclick=()=>{if(state.mode!=='demo'){resetOld();mode('demo')}panel(false);notify('Preview mode. Tap the image for controls.',2100)};
 $('closePanel').onclick=()=>panel(false);
@@ -239,7 +220,7 @@ seekEl.addEventListener('change',()=>{state.scrubbing=false;seekTo(seekEl.value)
 $('tapLayer').addEventListener('click',()=>setHud(!state.showingHud));
 $('tapLayer').addEventListener('dblclick',e=>{const r=stage.getBoundingClientRect();skip(e.clientX-r.left<r.width/2?-10:10)});
 $('tapLayer').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setHud(!state.showingHud)}});
-window.addEventListener('keydown',e=>{if(['INPUT'].includes(document.activeElement?.tagName))return;if(e.code==='Space'||e.code==='KeyK'){e.preventDefault();togglePlay()}else if(e.code==='ArrowLeft')skip(-10);else if(e.code==='ArrowRight')skip(10);else if(e.code==='KeyF')immersive();else if(e.code==='KeyC')toggleCaptions();else if(e.code==='Escape'&&!launch.classList.contains('hidden'))panel(false)});
+window.addEventListener('keydown',e=>{if(state.mode==='youtube'){if(e.code==='Escape')panel(true);return;}if(['INPUT'].includes(document.activeElement?.tagName))return;if(e.code==='Space'||e.code==='KeyK'){e.preventDefault();togglePlay()}else if(e.code==='ArrowLeft')skip(-10);else if(e.code==='ArrowRight')skip(10);else if(e.code==='KeyF')immersive();else if(e.code==='KeyC')toggleCaptions();else if(e.code==='Escape'&&!launch.classList.contains('hidden'))panel(false)});
 video.addEventListener('play',()=>{state.playing=true;syncControls();keepHud()});video.addEventListener('pause',()=>{state.playing=false;syncControls()});video.addEventListener('ended',()=>{state.playing=false;setHud(true);syncControls()});video.addEventListener('error',()=>notify('This video format is unsupported by the browser.',5500));
 window.addEventListener('resize',geometry);window.addEventListener('orientationchange',()=>setTimeout(geometry,180));document.addEventListener('fullscreenchange',geometry);
 setInterval(()=>{if(!document.hidden)progress()},450);geometry();syncControls();
