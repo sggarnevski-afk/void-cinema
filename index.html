@@ -32,6 +32,9 @@ button,input{font:inherit}button{cursor:pointer}button:focus-visible,input:focus
 .hud-right,.hud-left{display:flex;gap:8px;align-items:center}
 .ico{height:38px;min-width:38px;border:1px solid var(--stroke);background:rgba(4,4,7,.53);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);color:#fff;border-radius:13px;display:grid;place-items:center;padding:0 10px}
 .ico svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+#ccBtn{position:relative;font-size:13px;font-weight:700;letter-spacing:-.04em;line-height:1}
+#ccBtn.cc-off::after{content:"";position:absolute;left:7px;right:7px;top:50%;border-top:2px solid #fff;transform:rotate(-32deg);filter:drop-shadow(0 1px 1px #000)}
+#ccBtn[aria-pressed="true"]{background:rgba(245,242,235,.88);color:#0b0b0d}
 .ico:active,.big-btn:active{transform:scale(.96)}
 #titleTag{max-width:45vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;font-weight:550;letter-spacing:.02em;opacity:.85;text-shadow:0 1px 8px #000}
 .hud-middle{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:24px}
@@ -89,6 +92,7 @@ h1{font-size:25px;font-weight:600;letter-spacing:-.055em;margin:0;line-height:1.
    <div class="hud-top">
     <div class="hud-left"><button class="ico" id="libraryBtn" title="Choose video" aria-label="Choose video"><svg viewBox="0 0 24 24"><path d="M4 8V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3M4 8h16v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="m10 11 5 4-5 4z"/></svg></button><span id="titleTag">VOID / CINEMA</span></div>
     <div class="hud-right">
+     <button class="ico cc-off" id="ccBtn" title="Turn subtitles on" aria-label="Turn subtitles on" aria-pressed="false">CC</button>
      <button class="ico" id="muteBtn" title="Mute" aria-label="Mute"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9a5 5 0 0 1 0 6"/></svg></button>
      <button class="ico" id="settingsBtn" title="Frame settings" aria-label="Frame settings"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2" fill="#111"/><circle cx="15" cy="12" r="2" fill="#111"/><circle cx="11" cy="18" r="2" fill="#111"/></svg></button>
      <button class="ico" id="fullscreenBtn" title="Request fullscreen" aria-label="Request fullscreen"><svg viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5"/></svg></button>
@@ -105,13 +109,13 @@ h1{font-size:25px;font-weight:600;letter-spacing:-.055em;margin:0;line-height:1.
 </div>
 <div id="launch">
  <section class="panel" role="dialog" aria-modal="true" aria-labelledby="panelTitle">
-  <div class="panel-head"><div><span class="kicker">VOID / CINEMA · 01</span><h1 id="panelTitle">The screen, minus the noise.</h1><p>Full-height landscape video. Black pillars. Rounded corners. Nothing else.</p></div><button class="close" id="closePanel" title="Close" aria-label="Close">×</button></div>
+  <div class="panel-head"><div><span class="kicker">VOID / CINEMA · 02</span><h1 id="panelTitle">The screen, minus the noise.</h1><p>Full-height landscape video. Black pillars. Rounded corners. Nothing else.</p></div><button class="close" id="closePanel" title="Close" aria-label="Close">×</button></div>
   <form class="url-form" id="urlForm"><input id="urlInput" aria-label="YouTube video link" type="text" placeholder="Paste a YouTube link" spellcheck="false" autocomplete="off" inputmode="url"><button class="primary" type="submit">Watch ↗</button></form>
   <div class="alt-row"><button class="alt" id="fileBtn">Open a video file</button><button class="alt" id="previewBtn">Preview the frame</button></div>
   <div class="section-label">Frame geometry</div>
   <div class="range-line"><label for="ratio">Video width</label><input id="ratio" type="range" min="1.80" max="2.06" step="0.01" value="1.98"><output id="ratioValue">1.98:1</output></div>
   <div class="range-line"><label for="corners">Corner radius</label><input id="corners" type="range" min="0" max="48" step="1" value="15"><output id="cornerValue">15 px</output></div>
-  <div class="notice">The player is centred and fills the entire screen height. Side margins remain symmetrical and keep the camera cutout outside the picture. YouTube embeds may require this HTML to be hosted via HTTPS; local videos work directly.</div>
+  <div class="notice">The player is centred and fills the entire screen height. Side margins remain symmetrical and keep the camera cutout outside the picture. The CC button appears when you tap the picture. YouTube captions start off; availability and toggling depend on the YouTube embedded player. Local videos work directly.</div>
  </section>
 </div>
 <input type="file" id="filePick" accept="video/*">
@@ -123,7 +127,7 @@ h1{font-size:25px;font-weight:600;letter-spacing:-.055em;margin:0;line-height:1.
 const $=id=>document.getElementById(id);
 const stage=$('stage'), demo=$('demo'), ytMount=$('youtubeMount'), video=$('localVideo'), launch=$('launch'), toastEl=$('toast');
 const ratioEl=$('ratio'), cornersEl=$('corners'), seekEl=$('seek'), titleTag=$('titleTag');
-const state={mode:'demo',ratio:1.98,radius:15,player:null,ytReady:false,ytScript:null,objectURL:null,playing:false,muted:false,showingHud:false,duration:0,elapsed:0,hudTimeout:0,toastTimeout:0,scrubbing:false,sourceTitle:'VOID / CINEMA'};
+const state={mode:'demo',ratio:1.98,radius:15,captionsEnabled:false,player:null,ytReady:false,ytScript:null,objectURL:null,playing:false,muted:false,showingHud:false,duration:0,elapsed:0,hudTimeout:0,toastTimeout:0,scrubbing:false,sourceTitle:'VOID / CINEMA'};
 function notify(msg,ms=4000){toastEl.textContent=msg;toastEl.classList.add('visible');clearTimeout(state.toastTimeout);state.toastTimeout=setTimeout(()=>toastEl.classList.remove('visible'),ms)}
 function geometry(){
  const w=window.innerWidth,h=window.innerHeight;
@@ -148,14 +152,58 @@ function openLocal(file){if(!file)return;resetOld();state.objectURL=URL.createOb
 function parseYT(input){const s=String(input||'').trim();if(/^[a-zA-Z0-9_-]{11}$/.test(s))return s;try{const u=new URL(s);const host=u.hostname.toLowerCase().replace(/^www\./,'').replace(/^m\./,'');if(host==='youtu.be')return (u.pathname.split('/')[1]||'').match(/^[a-zA-Z0-9_-]{11}$/)?.[0]||null;if(['youtube.com','youtube-nocookie.com','music.youtube.com'].includes(host)){if(u.pathname==='/watch')return (u.searchParams.get('v')||'').match(/^[a-zA-Z0-9_-]{11}$/)?.[0]||null;const parts=u.pathname.split('/').filter(Boolean);if(['shorts','live','embed','v'].includes(parts[0]))return (parts[1]||'').match(/^[a-zA-Z0-9_-]{11}$/)?.[0]||null;}}catch(_e){}return null;}
 function loadYTAPI(){if(window.YT?.Player)return Promise.resolve();if(state.ytScript)return state.ytScript;
  state.ytScript=new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(new Error('YouTube API timed out')),13000);window.onYouTubeIframeAPIReady=()=>{clearTimeout(timeout);resolve()};const s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';s.onerror=()=>{clearTimeout(timeout);reject(new Error('Could not load YouTube API'))};document.head.appendChild(s)});return state.ytScript;}
+// Captions are OFF by default. YouTube caption-module methods are not part of
+// the documented public API, so these are best-effort and may change.
+function applyCaptions(player=state.player){
+ if(state.mode!=='youtube'||!player)return;
+ try{
+  if(state.captionsEnabled){
+   if(typeof player.loadModule==='function')player.loadModule('captions');
+  }else{
+   // Avoid responding to module-unload events with another redundant unload.
+   const modules=typeof player.getOptions==='function'?player.getOptions():null;
+   if(Array.isArray(modules)&&!modules.includes('captions')&&!modules.includes('cc'))return;
+   // An empty track clears captions in players that support the option.
+   if(typeof player.setOption==='function'){
+    try{player.setOption('captions','track',{});}catch(_e){}
+   }
+   if(typeof player.unloadModule==='function'){
+    player.unloadModule('captions');
+    player.unloadModule('cc');
+   }
+  }
+ }catch(_e){}
+}
+function applyCaptionsSoon(player){
+ [180,950].forEach(delay=>setTimeout(()=>{
+  if(state.mode==='youtube'&&state.player===player&&!state.captionsEnabled)applyCaptions(player);
+ },delay));
+}
+function toggleCaptions(){
+ if(state.mode==='local'){
+  const tracks=Array.from(video.textTracks||[]);
+  if(!tracks.length){notify('No separate subtitle track in this local video.');keepHud();return;}
+  state.captionsEnabled=!state.captionsEnabled;
+  tracks.forEach((track,i)=>{track.mode=state.captionsEnabled&&i===0?'showing':'disabled'});
+ }else if(state.mode==='youtube'){
+  state.captionsEnabled=!state.captionsEnabled;
+  applyCaptions();
+  if(!state.captionsEnabled)applyCaptionsSoon(state.player);
+  notify(state.captionsEnabled?'Subtitles requested — availability depends on YouTube.':'Subtitles off (best effort).',2500);
+ }else{
+  notify('Start a video to control subtitles.');keepHud();return;
+ }
+ syncControls();keepHud();
+}
 async function openYT(id){resetOld();state.sourceTitle='YouTube · '+id;titleTag.textContent=state.sourceTitle;mode('youtube');panel(false);notify('Loading YouTube…',2200);
  if(location.protocol==='file:')notify('YouTube may show Error 153 when opened as a local file. Use an HTTPS-hosted copy if that happens.',7000);
  const container=document.createElement('div');container.id='ytTarget';ytMount.appendChild(container);
  try{await loadYTAPI();if(state.mode!=='youtube')return;
   state.player=new YT.Player('ytTarget',{
-    videoId:id,playerVars:{controls:0,playsinline:1,fs:0,iv_load_policy:3,rel:0,enablejsapi:1,autoplay:0},
-    events:{onReady:(e)=>{geometry();setHud(true);syncControls();notify('Press play to start watching.',2300)},
-      onStateChange:(e)=>{state.playing=e.data===YT.PlayerState.PLAYING;syncControls();if(state.playing)keepHud()},
+    videoId:id,playerVars:{controls:0,playsinline:1,fs:0,iv_load_policy:3,cc_load_policy:0,rel:0,enablejsapi:1,autoplay:0},
+    events:{onReady:(e)=>{geometry();applyCaptions(e.target);applyCaptionsSoon(e.target);setHud(true);syncControls();notify('Press play to start watching.',2300)},
+      onStateChange:(e)=>{state.playing=e.data===YT.PlayerState.PLAYING;if(!state.captionsEnabled){applyCaptions(e.target);if(state.playing)applyCaptionsSoon(e.target)}syncControls();if(state.playing)keepHud()},
+      onApiChange:(e)=>{if(!state.captionsEnabled)applyCaptions(e.target)},
       onError:(e)=>{setHud(true);notify('YouTube could not play this embed (error '+e.data+'). Try an HTTPS page or a different video.',7500)}
     }
   });
@@ -164,6 +212,10 @@ async function openYT(id){resetOld();state.sourceTitle='YouTube · '+id;titleTag
 function syncControls(){const path=state.playing?'<rect x="7" y="5" width="3.8" height="14" rx="1"/><rect x="13.2" y="5" width="3.8" height="14" rx="1"/>':'<path d="m9 5 11 7-11 7z"/>';
  $('playBtn').innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor" stroke="none">'+path+'</svg>';
  $('playBtn').setAttribute('aria-label',state.playing?'Pause':'Play');
+ $('ccBtn').classList.toggle('cc-off',!state.captionsEnabled);
+ $('ccBtn').setAttribute('aria-pressed',String(state.captionsEnabled));
+ $('ccBtn').setAttribute('aria-label',state.captionsEnabled?'Turn subtitles off':'Turn subtitles on');
+ $('ccBtn').title=state.captionsEnabled?'Turn subtitles off':'Turn subtitles on';
  $('muteBtn').innerHTML=state.muted?'<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4zM17 9l5 6m0-6-5 6"/></svg>':'<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4zM17 9a5 5 0 0 1 0 6"/></svg>';
 }
 function togglePlay(){if(state.mode==='local'){if(video.paused){video.play().then(()=>{state.playing=true;syncControls()}).catch(()=>notify('Playback was blocked. Tap again.'))}else{video.pause();state.playing=false;syncControls()}}
@@ -180,14 +232,14 @@ $('fileBtn').onclick=()=> $('filePick').click();$('filePick').onchange=e=>openLo
 $('previewBtn').onclick=()=>{if(state.mode!=='demo'){resetOld();mode('demo')}panel(false);notify('Preview mode. Tap the image for controls.',2100)};
 $('closePanel').onclick=()=>panel(false);
 $('libraryBtn').onclick=()=>panel(true);$('settingsBtn').onclick=()=>panel(true);
-$('fullscreenBtn').onclick=immersive;$('playBtn').onclick=togglePlay;$('backBtn').onclick=()=>skip(-10);$('forwardBtn').onclick=()=>skip(10);$('muteBtn').onclick=toggleMute;
+$('fullscreenBtn').onclick=immersive;$('ccBtn').onclick=toggleCaptions;$('playBtn').onclick=togglePlay;$('backBtn').onclick=()=>skip(-10);$('forwardBtn').onclick=()=>skip(10);$('muteBtn').onclick=toggleMute;
 ratioEl.oninput=e=>{state.ratio=Number(e.target.value);geometry()};cornersEl.oninput=e=>{state.radius=Number(e.target.value);$('cornerValue').textContent=state.radius+' px';geometry()};
 seekEl.addEventListener('input',()=>{state.scrubbing=true;$('elapsed').textContent=format((Number(seekEl.value)/1000)*state.duration);seekEl.style.setProperty('--seek-pct',(Number(seekEl.value)/10)+'%')});
 seekEl.addEventListener('change',()=>{state.scrubbing=false;seekTo(seekEl.value)});
 $('tapLayer').addEventListener('click',()=>setHud(!state.showingHud));
 $('tapLayer').addEventListener('dblclick',e=>{const r=stage.getBoundingClientRect();skip(e.clientX-r.left<r.width/2?-10:10)});
 $('tapLayer').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setHud(!state.showingHud)}});
-window.addEventListener('keydown',e=>{if(['INPUT'].includes(document.activeElement?.tagName))return;if(e.code==='Space'||e.code==='KeyK'){e.preventDefault();togglePlay()}else if(e.code==='ArrowLeft')skip(-10);else if(e.code==='ArrowRight')skip(10);else if(e.code==='KeyF')immersive();else if(e.code==='Escape'&&!launch.classList.contains('hidden'))panel(false)});
+window.addEventListener('keydown',e=>{if(['INPUT'].includes(document.activeElement?.tagName))return;if(e.code==='Space'||e.code==='KeyK'){e.preventDefault();togglePlay()}else if(e.code==='ArrowLeft')skip(-10);else if(e.code==='ArrowRight')skip(10);else if(e.code==='KeyF')immersive();else if(e.code==='KeyC')toggleCaptions();else if(e.code==='Escape'&&!launch.classList.contains('hidden'))panel(false)});
 video.addEventListener('play',()=>{state.playing=true;syncControls();keepHud()});video.addEventListener('pause',()=>{state.playing=false;syncControls()});video.addEventListener('ended',()=>{state.playing=false;setHud(true);syncControls()});video.addEventListener('error',()=>notify('This video format is unsupported by the browser.',5500));
 window.addEventListener('resize',geometry);window.addEventListener('orientationchange',()=>setTimeout(geometry,180));document.addEventListener('fullscreenchange',geometry);
 setInterval(()=>{if(!document.hidden)progress()},450);geometry();syncControls();
